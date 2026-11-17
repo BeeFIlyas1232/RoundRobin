@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Round Robin</title>
+<style>
+  body {
+  font-family: sans-serif;
+  max-width: 600px;
+  margin: 20px auto;
+  background-image: url('Team.jpg'); /* или вставьте прямую ссылку https://... */
+  background-size: cover;          /* растягивает картинку на весь экран */
+  background-position: center;     /* центрирует фон */
+  background-attachment: fixed;    /* фиксирует фон при прокрутке */
+}
+  body { font-family: sans-serif; max-width: 600px; margin: 20px auto; }
+  input { width: 55px; margin: 3px; }
+  table, th, td { border: 1px solid #333; border-collapse: collapse; padding: 5px 10px; text-align: center; }
+  .gantt { display: flex; margin: 10px 0; }
+  .gantt div { border: 1px solid #000; padding: 5px; background: #e6f0ff; text-align: center; }
+</style>
+</head>
+<body>
+
+<h3>Round Robin</h3>
+Процессов (n): <input type="number" id="n" value="4" min="1" onchange="makeInputs()">
+Quantum (q): <input type="number" id="q" value="2" min="1">
+<div id="inputs"></div>
+<button onclick="run()">Рассчитать</button>
+<div id="out"></div>
+
+<script>
+const defA = [0, 1, 2, 3], defB = [5, 3, 1, 2];
+
+function makeInputs() {
+  let n = +document.getElementById('n').value, html = '';
+  for (let i = 0; i < n; i++) {
+    html += `<div>P${i}: Arrival <input class="a" type="number" value="${defA[i] ?? 0}"> Burst <input class="b" type="number" value="${defB[i] ?? 1}"></div>`;
+  }
+  document.getElementById('inputs').innerHTML = html;
+}
+
+function run() {
+  let arri = [...document.querySelectorAll('.a')].map(x => +x.value);
+  let burst = [...document.querySelectorAll('.b')].map(x => +x.value);
+  let q = +document.getElementById('q').value, n = arri.length;
+  let time = 0, done = 0, rem = [...burst], ct = Array(n).fill(0), vis = Array(n).fill(false), queue = [], gantt = [];
+
+  for (let i = 0; i < n; i++) if (arri[i] === 0) { vis[i] = true; queue.push(i); }
+
+  while (done < n) {
+    if (!queue.length) {
+      time++;
+      for (let i = 0; i < n; i++) if (!vis[i] && arri[i] <= time) { vis[i] = true; queue.push(i); }
+      continue;
+    }
+    let cur = queue.shift(), st = time;
+    if (rem[cur] > q) { time += q; rem[cur] -= q; }
+    else { time += rem[cur]; rem[cur] = 0; ct[cur] = time; done++; }
+    gantt.push([`P${cur}`, st, time]);
+
+    for (let i = 0; i < n; i++) if (!vis[i] && arri[i] <= time) { vis[i] = true; queue.push(i); }
+    if (rem[cur] > 0) queue.push(cur);
+  }
+
+  let tat = ct.map((c, i) => c - arri[i]);
+  let wt = tat.map((t, i) => t - burst[i]);
+  let awt = (wt.reduce((a, b) => a + b, 0) / n).toFixed(2);
+  let atat = (tat.reduce((a, b) => a + b, 0) / n).toFixed(2);
+
+  document.getElementById('out').innerHTML = `
+    <p><b>AWT:</b> ${awt} | <b>Avg TAT:</b> ${atat}</p>
+    <b>Диаграмма Ганта:</b>
+    <div class="gantt">${gantt.map(g => `<div style="flex:${g[2]-g[1]}"><b>${g[0]}</b><br>${g[1]}-${g[2]}</div>`).join('')}</div>
+    <table>
+      <tr><th>Процесс</th><th>Arrival</th><th>Burst</th><th>TAT</th><th>WT</th></tr>
+      ${arri.map((a, i) => `<tr><td>P${i}</td><td>${a}</td><td>${burst[i]}</td><td>${tat[i]}</td><td>${wt[i]}</td></tr>`).join('')}
+    </table>`;
+}
+
+makeInputs();
+run();
+</script>
+</body>
+</html>
